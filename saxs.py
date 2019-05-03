@@ -8,12 +8,12 @@ Functions for analyzing SAXS data and background.
 """
 
 import numpy as np
-from scipy.interpolate import interp2d
+from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
 
 def average_intensity_1d(im, averaged_coord, bc=(196, 764), lambda_=0.7293E-10, 
-                         pix_size=177.2E-6, d_detector=8.5028, r_lim=(10, 200),
+                         pixel_size=177.2E-6, d_detector=8.5028, r_lim=(10, 200),
                          phi_lim=(-np.pi, np.pi), show_roi=False):
     """
     Integrates the intensity given in the image "im" over either the azimuthal 
@@ -30,12 +30,12 @@ def average_intensity_1d(im, averaged_coord, bc=(196, 764), lambda_=0.7293E-10,
             beam center (row, col), given by Karthik for 5-ID-D, APS
         lambda_ : float
             wavelength of X-ray [m], default corresponds to 17 keV
-        pix_size : float
+        pixel_size : float
             size of pixels on detector [m]
         d_detector : float
             distance to detector [m]
         r_lim : (int, int)
-            limits of radius to examine [pixels, size given by pix_size]
+            limits of radius to examine [pixels, size given by pixel_size]
         phi_lim : (float, float)
             limits of angles to examine from (-pi, pi) [rad].
             *Note that the y-axis points downwards in images! (so phi=0 points
@@ -57,19 +57,22 @@ def average_intensity_1d(im, averaged_coord, bc=(196, 764), lambda_=0.7293E-10,
     # Create Cartesian mesh grid
     x = np.arange(n_cols) - xc
     y = np.arange(n_rows) - yc # flip b/c y on computer is opposite
+    # create meshgrid of Cartesian coordinates
+    Y, X = np.meshgrid(y, x, indexing='ij')
     # Create mesh of [r, phi] using heuristics to estimate number of points
-    num_r = dr
-    num_phi = round(n_rows*dphi)
+    num_r = 2*dr
+    num_phi = round(2*n_rows*dphi)
     r = np.linspace(r_lim[0], r_lim[1], num=num_r)
     phi = np.linspace(phi_lim[0], phi_lim[1], num=num_phi)
     R, Phi = np.meshgrid(r, phi, indexing='ij')
     Xq = xc + np.multiply(R, np.cos(Phi))
     Yq = yc + np.multiply(R, np.sin(Phi))
     # interpolate 2D grid with cubic spline
-    intensity_interp = interp2d(x, y, im, kind='cubic')
-    intensity_grid = np.array([[intensity_interp(Xq[i,j],Yq[i,j]) 
-                        for j in range(Xq.shape[1])] 
-                        for i in range(Xq.shape[0])])
+    intensity_interp = RectBivariateSpline(y, x, im)
+    intensity_grid = intensity_interp.ev(Yq, Xq)
+    print(intensity_grid.shape)
+    print(R.shape)
+
     # Average over averaged coordinate (q/r or phi)
     assert averaged_coord in ['q', 'r', 'phi'], \
         "Averaged coordinate must be q, r, or phi."
@@ -78,14 +81,11 @@ def average_intensity_1d(im, averaged_coord, bc=(196, 764), lambda_=0.7293E-10,
         free_coord = phi
     elif averaged_coord == 'phi':
         intensity_1d = np.mean(intensity_grid, axis=1)
-        # convert radius of image to wave vector q
-        q = 4E-10*np.pi*np.sin(0.5*np.arctan2(r*pix_size,d_detector))/lambda_
-        free_coord = q    
+        # convert radius of image to wave vector q [1/A]
+        free_coord = compute_q(r, pixel_size, d_detector, lambda_)
     
     # Show region of interest over which averaging is performed
     if show_roi:
-        # create meshgrid of Cartesian coordinates
-        Y, X = np.meshgrid(y, x, indexing='ij')
         # Get polar coordinates of pixels
         R_roi = np.sqrt(X**2 + Y**2)
         Phi_roi = np.arctan2(Y,X)
@@ -102,6 +102,29 @@ def average_intensity_1d(im, averaged_coord, bc=(196, 764), lambda_=0.7293E-10,
         plt.imshow(im_roi)
         
     return intensity_1d, free_coord
+
+
+def compute_q(r, pixel_size, d_detector, lambda_):
+    """
+    Computes the wave vector q given the radius [pixels] of the pixel,
+    distance from detector, pixel size, and wavelength.
+    
+    Parameters:
+        r : float
+            Radius of location in image [pixels]
+        pixel_size : float
+            size of pixels on detector [m]
+        d_detector : float
+            distance to detector [m]
+        lambda_ : float
+            wavelength of X-ray [m], default corresponds to 17 keV
+            
+    Returns:
+        q : float
+            Wave vector [1/Angstrom]
+    """
+    # 1E-10 converts to angstroms from meters
+    return (4*np.pi)*np.sin(0.5*np.arctan2(r*pixel_size,d_detector))/lambda_*1E-10
 
 
 def parse_filename(filename):
