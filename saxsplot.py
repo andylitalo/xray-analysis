@@ -90,7 +90,7 @@ def show_roi(im, center, r_lim, phi_lim):
         im : 2D array
             2D pixel array (image) of intensities from SAXS
         center : (int, int)
-            beam center (row, col), given by Karthik for 5-ID-D, APS
+            beam center (row, col), given in header file (folder "processing")
          r_lim : (int, int)
             limits of radius to examine [pixels, size given by pixel_size]
         phi_lim : (float, float)
