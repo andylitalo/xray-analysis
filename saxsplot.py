@@ -11,13 +11,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot(x_list, y_list, x_label='q (1/A)', y_label='intensity (a.u.)', 
-         label_list=[], title='SAXS Intensity vs. Wavenumber', xscale='log', 
+def plot(x_list, y_list, x_label='q (1/A)', y_label='intensity (a.u.)',
+         label_list=[], title='SAXS Intensity vs. Wavenumber', xscale='log',
          yscale='log', ax_fs=18,t_fs=20, tk_fs=14, l_fs=14, save_path=''):
     """
     Plots the intensity [a.u.] vs. the wave number [1/A] for the given
     datasets.
-    
+
     Parameters:
         x_list : list of 1D array-like of floats
             x-values (often wavenumber q [1/A]).  Each entry is a new dataset
@@ -45,7 +45,7 @@ def plot(x_list, y_list, x_label='q (1/A)', y_label='intensity (a.u.)',
             Font size of legend
         save_path : string
             File path to save axis (w/ folders and ext). Saves if not empty.
-    
+
     Returns:
         ax : axis handle
             Handle of current axis object
@@ -77,15 +77,15 @@ def plot(x_list, y_list, x_label='q (1/A)', y_label='intensity (a.u.)',
     # Save figure
     if save_path:
         plt.savefig(save_path, bbox_inches='tight')
-    
+
     return ax
-    
-    
+
+
 
 def show_roi(im, center, r_lim, phi_lim):
     """
     Shows the region of interest in a SAXS plot.
-    
+
     Parameters:
         im : 2D array
             2D pixel array (image) of intensities from SAXS
@@ -96,10 +96,10 @@ def show_roi(im, center, r_lim, phi_lim):
         phi_lim : (float, float)
             limits of angles to examine from (-pi, pi) [rad].
             *Note that the y-axis points downwards in images! (so phi=0 points
-            left and phi=pi/2 points down)        
+            left and phi=pi/2 points down)
     """
-    im_roi = np.copy(im) # prevent overwriting original image
-    
+    im_roi = np.copy(im) # prevents overwriting original image
+
     # Define ROI
     n_rows, n_cols = im.shape
     xc, yc = center
@@ -116,7 +116,7 @@ def show_roi(im, center, r_lim, phi_lim):
                                np.bitwise_or(Phi_roi > phi_lim[1], Phi_roi < phi_lim[0]))
     im_roi[black_out] = 0
     im_roi[np.bitwise_not(black_out)] = 255
-    
+
     # plot
     plt.figure()
     plt.imshow(im_roi)
